@@ -63,9 +63,19 @@ function buildFilePrompt(mode, text, audienceHint) {
 
 ${JSON_CONTRACT}
 
-The document/image is ATTACHED to this conversation as an input. Read it carefully
-and produce the required JSON output exactly as specified. Never invent numbers,
-amounts, dates, or clauses that are not in the attached file.
+The document/image is ATTACHED to this conversation as an input, so paste is not available.
+Read the WHOLE attached document/image carefully top to bottom and explain it in detail, section by section.
+Do not just give a headline: walk through every meaningful part of the document.
+1. State what kind of document it is and who sent it (for whom).
+2. urduSummary: a DETAILED, well-structured simple-Urdu explanation (several short paragraphs with line breaks).
+   Cover every important point in the document in order: key amounts and fees, payment totals and instalment plans,
+   all dates and deadlines, conditions and warnings, penalties for missing these, and each action the reader must take
+   and by when. Refer to the actual figures written in the file (e.g. exact rupee amounts, dates as written).
+   Use plain Urdu, Urdu numerals where natural, and short sentences.
+3. romanUrdu: the same detailed explanation in Roman Urdu.
+4. keyFacts: ONE item for each key fact the document contains (amounts, due dates, penalties, contacts, actions),
+   so nothing important is missed.
+Never invent numbers, amounts, dates, or clauses that are not in the attached file.
 ${extra}
 
 Audience hint: ${audienceHint || "general household reader"}`;
@@ -148,7 +158,7 @@ async function interactionCall(apiKey, model, input) {
     body: JSON.stringify({
       model,
       input,
-      generation_config: { temperature: 0.4, max_output_tokens: 2048 },
+      generation_config: { temperature: 0.4, max_output_tokens: 4096 },
     }),
   });
 
