@@ -57,75 +57,76 @@ Audience hint: ${audienceHint || "general household reader"}`;
 }
 
 async function callGemini(apiKey, text, audienceHint, mode) {
-  const versions = ["v1beta", "v1"];
-  const modelsToTry = [
-    "gemini-2.5-flash",
-    "gemini-1.5-flash",
-    "gemini-1.5-pro",
-    "gemini-1.5-flash-8b",
-  ];
-
+  const models = ["gemini-1.5-flash", "gemini-1.5-pro"];
   let lastError = null;
-  for (const version of versions) {
-    for (const model of modelsToTry) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: buildPrompt(text, audienceHint, mode),
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.4,
-              maxOutputTokens: 2048,
-              responseMimeType: "application/json",
+
+  for (const model of models) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: buildPrompt(text, audienceHint, mode),
+                },
+              ],
             },
-          }),
-        });
+          ],
+          generationConfig: {
+            temperature: 0.4,
+            maxOutputTokens: 2048,
+            responseMimeType: "application/json",
+          },
+        }),
+      });
 
-        if (res.ok) {
-          const data = await res.json();
-          const textPart = data?.candidates?.[0]?.content?.parts
-            ?.map((p) => p.text || "")
-            .join("");
-          if (!textPart) throw new Error("Empty response from Gemini");
+      if (res.ok) {
+        const data = await res.json();
+        const textPart = data?.candidates?.[0]?.content?.parts
+          ?.map((p) => p.text || "")
+          .join("");
+        if (!textPart) throw new Error("Empty response from Gemini");
 
-          try {
-            return JSON.parse(textPart.replace(/^```json\s*/, "").replace(/```$/, "").trim());
-          } catch (e) {
-            return { raw: textPart };
-          }
-        } else {
-          let body = "";
-          try {
-            body = await res.text();
-          } catch {}
-          const errMessage = `Gemini API error ${res.status} (${version}/${model}): ${body.slice(0, 250)}`;
-          lastError = new Error(errMessage);
-          lastError.status = res.status;
-
-          // Fail fast on API key, permission, or quota errors instead of masking them
-          if ([400, 401, 403, 429].includes(res.status)) {
-            throw lastError;
-          }
+        try {
+          return JSON.parse(textPart.replace(/^```json\s*/, "").replace(/```$/, "").trim());
+        } catch (e) {
+          return { raw: textPart };
         }
-      } catch (err) {
-        if ([400, 401, 403, 429].includes(err.status)) {
-          throw err;
-        }
-        lastError = err;
       }
+
+      let body = "";
+      try {
+        body = await res.text();
+      } catch {}
+
+      let errMessage = `Gemini API error (${model}): `;
+      try {
+        const json = JSON.parse(body);
+        errMessage += json?.error?.message || body.slice(0, 250);
+      } catch {
+        errMessage += body.slice(0, 250);
+      }
+
+      lastError = new Error(errMessage);
+      lastError.status = res.status;
+
+      // Stop immediately on authentication, permission, or quota errors
+      if ([400, 401, 403, 429].includes(res.status)) {
+        throw lastError;
+      }
+    } catch (err) {
+      if ([400, 401, 403, 429].includes(err.status)) {
+        throw err;
+      }
+      lastError = err;
     }
   }
-  throw lastError || new Error("All Gemini model endpoints returned error");
+
+  throw lastError || new Error("Gemini API request failed");
 }
 
 app.get("/api/health", (_req, res) => {
