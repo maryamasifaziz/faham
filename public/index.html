@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Faham — فہم · Har document, aap ki zaban mein</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="flag-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="1" y="4" width="22" height="16" rx="1.5" fill="#01411C" />
+        <path d="M1 4h9v16H1z" fill="white" />
+        <circle cx="9.2" cy="12" r="4.2" fill="#FFF" />
+        <path d="M11 9.2l1.3 1 1.6-.3-1 1.4 1 1.4-1.6-.3-1.3 1-.1-1.7-1.5-.8 1.5-.8z" fill="#01411C" />
+      </svg>
+      <div>
+        <h1>فہم <span class="roman">· Faham</span></h1>
+        <p class="tagline">Har English document, aap ki zaban mein.</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="btnSettings" title="Settings" aria-label="Settings">⚙️</button>
+      <span class="yr">14 Aug</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro">
+      <h2>English bills, bank letters, big words —<br />aap inhein <em>fahm</em> sakte hain <strong>abhi</strong>.</h2>
+      <p>Paste any text — an English bill, an article, or Roman-Urdu WhatsApp message.
+        Faham turns it into simple Urdu, plain Roman-Urdu, and pulls out the numbers
+        and deadlines that actually matter.</p>
+    </section>
+
+    <section class="card input-card">
+      <div class="card-head">
+        <label for="docText">Paste your English document</label>
+        <span id="charCount"></span>
+      </div>
+      <textarea id="docText" rows="8"
+        placeholder="e.g. 'Dear Customer, your monthly electricity bill is Rs 12,450. Please pay by 25 August 2026 to avoid a late-payment surcharge of Rs 500...'"></textarea>
+
+      <div class="samples">
+        <span class="samples-label">Try a sample:</span>
+        <button class="chip" data-sample="bill">Electricity bill</button>
+        <button class="chip" data-sample="loan">Bank loan letter</button>
+        <button class="chip" data-sample="visa">Visa decision</button>
+        <button class="chip" data-sample="rent">Rent agreement</button>
+        <button class="chip" data-sample="fine">Traffic chalan</button>
+      </div>
+
+      <div class="row">
+        <select id="mode" title="What do you want to do?">
+          <option value="document">Mode: Explain a document (bill / letter / notice)</option>
+          <option value="translate">Mode: Translate English → Urdu</option>
+          <option value="roman">Mode: Roman Urdu → Nastaliq</option>
+          <option value="summarize">Mode: Summarize in simple Urdu</option>
+        </select>
+        <select id="audience" title="Who is this for?">
+          <option value="general">For: household reader</option>
+          <option value="elderly">For: elderly / low literacy</option>
+          <option value="student">For: student</option>
+          <option value="small-business">For: small business owner</option>
+        </select>
+        <button id="btnFaham" class="cta">فہم کریں · Explain it to me</button>
+      </div>
+      <p id="errorBox" class="error" hidden></p>
+    </section>
+
+    <section class="card modal" id="settingsModal" hidden>
+      <div class="modal-head">
+        <h3>⚙️ Settings</h3>
+        <button class="icon-btn" id="btnCloseSettings" aria-label="Close">✕</button>
+      </div>
+      <p class="hint">Faham runs on Google Gemini (free tier). Add your free API key from
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
+        It is stored only in this browser (localStorage) and sent to our server just for your request.</p>
+      <input type="text" id="apiKeyInput" placeholder="Paste your Gemini API key here" />
+      <button class="cta small" id="btnSaveKey">Save key</button>
+      <p id="keyStatus" class="hint"></p>
+    </section>
+    <div class="scrim" id="scrim" hidden></div>
+
+    <section class="card result-card" id="resultCard" hidden>
+      <div class="card-head result-head">
+        <h3>فہم کا خلاصہ <span class="roman">· Your simplified document</span></h3>
+        <div class="view-toggle">
+          <button class="toggle active" data-view="urdu">Urdu</button>
+          <button class="toggle" data-view="roman">Roman Urdu</button>
+        </div>
+      </div>
+      <div class="summary" id="summaryUrdu" dir="rtl"></div>
+      <div class="summary" id="summaryRoman" style="display:none"></div>
+
+      <div class="facts-block">
+        <h4>اہم پوائنٹس · What you must know</h4>
+        <div id="facts" class="facts"></div>
+      </div>
+
+      <div class="result-actions">
+        <button class="ghost" id="btnCopy">📋 Copy summary</button>
+        <button class="ghost" id="btnWhatsApp">💬 Send on WhatsApp</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Faham · made with ❤️ in Pakistan 🇵🇰 for the AI Seekho hackathon · 14 August</p>
+  </footer>
+
+  <div id="loading" hidden class="loading">
+    <div class="spinner"></div>
+    <p>فہم... Zara sabar karein — making it simple</p>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
