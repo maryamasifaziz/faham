@@ -5,13 +5,17 @@ important documents of daily life — electricity bills, bank letters, visa deci
 rent agreements, traffic challans, medical forms — come in **English**, but a large part
 of Pakistan reads Urdu, Roman-Urdu, or faces low English literacy.
 
-Paste any document or text → Faham returns:
+Paste any document or text — **or upload a photo/PDF of a bill or letter** — → Faham returns:
 1. **A simple Urdu summary** (plain, casual, no bureaucracy) — rendered right-to-left in Nastaliq.
 2. **The same summary in Roman Urdu** for Urdu-latin readers.
 3. **Key facts as cards** — amounts, due dates, deadlines, penalties, contact info, actions needed.
 
 **Modes:** Explain a document (bill / bank / legal / forms) · Translate English → Urdu ·
 Roman Urdu → Nastaliq · Summarize long content in simple Urdu.
+
+Uploads read **natively (no OCR needed)**: images (`PNG`, `JPEG`, `WebP`, `BMP`) and **PDFs** are
+sent straight to Gemini's vision; the full document is then explained section by section in detail,
+citing the actual figures on it.
 
 > Made for the AI Seekho hackathon · 14 August. Runs on Google Gemini's free tier.
 
@@ -34,6 +38,21 @@ npm start
 Open **http://localhost:3000**, click a sample document (or paste your own), press
 **فہم کریں**.
 
+## Sample documents (try it instantly)
+
+Drag any of these into the app's **upload box** (or use them in a demo/pitch):
+
+| Sample | File | What it demonstrates |
+|---|---|---|
+| K-Electric bill | `samples/k-electric-bill.png` | Amounts, due date, late-payment surcharge, disconnection warning |
+| Bank loan letter | `samples/bank-loan-letter.jpg` | Loan amount, interest %, monthly instalment, deadline |
+| Traffic challan | `samples/traffic-challan.png` | Fine amount, payment deadline, 50% discount rule |
+| Jan Mall bill | `samples/jan-mall-bill.jpg` | Real-world shopping-mall receipt (photo/scan) |
+| PTCL bill | `samples/pakistan-ptcl-bill.png` | Real-world telecom bill |
+
+> The last two are real documents — swap them for the dummy ones if you don't want
+> personal details in a public repo.
+
 > No key set up? Click ⚙️ → paste a free key from https://aistudio.google.com/apikey
 > (stored only in your browser's localStorage).
 
@@ -55,13 +74,16 @@ Open **http://localhost:3000**, click a sample document (or paste your own), pre
 | File | Purpose |
 |---|---|
 | `server.js` | Express server; proxies a single request to the Gemini API and asks for strict JSON. |
-| `public/index.html` | One-page UI: paste box, sample docs, Urdu/Roman-Urdu toggle, key-facts cards, WhatsApp share. |
+| `public/index.html` | One-page UI: paste box, upload box (photo/PDF), sample docs, Urdu/Roman-Urdu toggle, key-facts cards, WhatsApp share. |
 | `public/style.css` | Pakistan-green theme, mobile-first, Noto Nastaliq Urdu font. |
-| `public/app.js` | Fetch, render, copy/share, settings persistence. |
+| `public/app.js` | Fetch, render, copy/share, settings persistence; client-side image downscaling for uploads. |
+| `samples/` | Sample bills & letters (PNG/JPG) for demoing / testing the upload flow. |
 
 ## Architecture (why this is demo-proof)
 
 - **No build step, no framework** — static files + one small Node server. Ships instantly.
+- **Photo/PDF upload (no OCR needed)** — point your camera at any bill; Gemini vision reads
+  images and PDFs natively and explains the whole document section-by-section.
 - **Key facts are extracted as structured data**, not just prose — great for judges
   ("functionality") and for future features (SMS/Dashboard integrations).
 - **Roman-Urdu dual output** shows accessibility thinking — real product depth.
