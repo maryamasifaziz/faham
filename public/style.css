@@ -14,7 +14,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--bg);
   color: var(--ink);
   min-height: 100vh;
@@ -232,7 +232,7 @@ select {
 
 /* Item 3: Urdu Output Visual Weight */
 .summary {
-  font-family: "Noto Nastaliq Urdu", serif;
+  font-family: "Noto Nastaliq Urdu", "Urdu Typesetting", "Jameel Noori Nastaleeq", "Noto Sans Arabic", serif;
   font-size: 1.4rem;
   line-height: 2.3;
   background: #fafdfb;
