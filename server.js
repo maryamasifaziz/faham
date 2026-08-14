@@ -7,7 +7,7 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 const PORT = process.env.PORT || 3000;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 
 const JSON_CONTRACT = `Respond ONLY with valid JSON in this exact shape (no markdown, no code fences):
 {
