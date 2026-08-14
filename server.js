@@ -7,7 +7,7 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 const PORT = process.env.PORT || 3000;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 const JSON_CONTRACT = `Respond ONLY with valid JSON in this exact shape (no markdown, no code fences):
 {
@@ -57,7 +57,7 @@ Audience hint: ${audienceHint || "general household reader"}`;
 }
 
 async function callGemini(apiKey, text, audienceHint, mode) {
-  const models = ["gemini-1.5-flash", "gemini-1.5-pro"];
+  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-pro"];
   let lastError = null;
 
   for (const model of models) {
@@ -113,7 +113,7 @@ async function callGemini(apiKey, text, audienceHint, mode) {
       }
 
       lastError = new Error(errMessage);
-      lastError.status = res.status;
+      lastError.status = [400, 401, 403, 429].includes(res.status) ? res.status : 502;
 
       // Stop immediately on authentication, permission, or quota errors
       if ([400, 401, 403, 429].includes(res.status)) {
