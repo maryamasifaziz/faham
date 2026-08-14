@@ -85,6 +85,14 @@
         <button class="chip" data-sample="fine">Traffic challan</button>
       </div>
 
+      <div class="upload-row">
+        <span class="or-divider">or upload</span>
+        <label class="upload-btn" for="fileInput">📎 Upload bill / letter (PDF or photo)</label>
+        <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp" hidden />
+        <span id="fileName" class="file-name" hidden></span>
+        <button type="button" id="btnRemoveFile" class="chip remove-chip" hidden>✕ remove</button>
+      </div>
+
       <div class="row">
         <div class="audience-wrapper">
           <label for="audience" class="select-label">Simplified for:</label>

@@ -153,6 +153,33 @@ textarea:focus { outline: none; border-color: var(--green-2); }
 }
 .chip:hover { background: #d8efe2; }
 
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  border: 1.5px dashed var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  flex-wrap: wrap;
+  background: #fbfdfc;
+}
+.upload-row.dragging { border-color: var(--green-2); background: var(--green-light); }
+.or-divider { font-size: .74rem; font-weight: 700; color: var(--muted); letter-spacing: .4px; text-transform: uppercase; }
+.upload-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--green);
+  font-size: .82rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+.upload-btn:hover { background: var(--green-light); }
+.file-name { font-size: .82rem; color: var(--ink); font-weight: 600; }
+.remove-chip { color: var(--danger); background: #fff1f0; }
+
 .row { display: flex; gap: 14px; margin-top: 16px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; }
 .audience-wrapper { flex: 1; min-width: 200px; }
 .select-label { font-size: .78rem; font-weight: 600; color: var(--muted); display: block; margin-bottom: 4px; }

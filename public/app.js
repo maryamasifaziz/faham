@@ -104,6 +104,106 @@ function updateCount() {
 docEl.addEventListener("input", updateCount);
 updateCount();
 
+/* ---------- File upload ---------- */
+const fileInput = $("fileInput");
+const fileNameEl = $("fileName");
+const btnRemoveFile = $("btnRemoveFile");
+let uploaded = null; // { data, mime, name }
+
+function toBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const s = reader.result;
+      resolve(s.slice(s.indexOf(",") + 1));
+    };
+    reader.onerror = () => reject(new Error("Could not read the file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function downscaleImage(file) {
+  const bitmap = await createImageBitmap(file);
+  const maxDim = 2000;
+  let { width, height } = bitmap;
+  if (width > maxDim || height > maxDim) {
+    const scale = Math.min(maxDim / width, maxDim / height);
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, width, height);
+  bitmap.close?.();
+  const url = canvas.toDataURL("image/jpeg", 0.85);
+  return url.slice(url.indexOf(",") + 1);
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  const IMG = ["image/jpeg", "image/png", "image/webp", "image/bmp"];
+  const isPdf = file.type === "application/pdf";
+  if (!isPdf && !IMG.includes(file.type)) {
+    showError("Unsupported file. Use PDF, PNG, JPEG, WebP or BMP.");
+    return;
+  }
+  const MAX_PDF = 3 * 1024 * 1024;
+  const MAX_IMG = 8 * 1024 * 1024;
+  if (isPdf && file.size > MAX_PDF) {
+    showError("PDF is too large for the free demo (max 3 MB).");
+    return;
+  }
+  if (!isPdf && file.size > MAX_IMG) {
+    showError("Image is too large (max 8 MB).");
+    return;
+  }
+  errorEl.hidden = true;
+  let data;
+  try {
+    data = isPdf ? await toBase64(file) : await toBase64(file);
+    if (!isPdf && file.size > 1.2 * 1024 * 1024) {
+      try {
+        data = await downscaleImage(file);
+      } catch {
+        /* keep original if browser can't parse it */
+      }
+    }
+  } catch (err) {
+    showError(err.message);
+    return;
+  }
+  uploaded = { data, mime: file.type, name: file.name };
+  fileNameEl.textContent = `📎 ${file.name} (quick photo/PDF read)`;
+  fileNameEl.hidden = false;
+  btnRemoveFile.hidden = false;
+  fileInput.value = "";
+}
+
+fileInput.addEventListener("change", () => handleFile(fileInput.files[0]));
+
+btnRemoveFile.addEventListener("click", () => {
+  uploaded = null;
+  fileNameEl.hidden = true;
+  btnRemoveFile.hidden = true;
+  errorEl.hidden = true;
+});
+
+const uploadRow = document.querySelector(".upload-row");
+["dragenter", "dragover"].forEach((e) =>
+  uploadRow?.addEventListener(e, (ev) => {
+    ev.preventDefault();
+    uploadRow.classList.add("dragging");
+  })
+);
+["dragleave", "drop"].forEach((e) =>
+  uploadRow?.addEventListener(e, (ev) => {
+    ev.preventDefault();
+    uploadRow.classList.remove("dragging");
+  })
+);
+uploadRow?.addEventListener("drop", (ev) => handleFile(ev.dataTransfer.files[0]));
+
 /* ---------- Settings modal ---------- */
 const modal = $("settingsModal");
 const scrim = $("scrim");
@@ -141,8 +241,8 @@ async function run() {
   const apiKey = localStorage.getItem(KEY_STORE) || "";
 
   errorEl.hidden = true;
-  if (text.length < 20) {
-    showError("Please paste the full text (at least a few sentences).");
+  if (!uploaded && text.length < 20) {
+    showError("Please paste the full text (at least a few sentences), or upload a bill / letter.");
     return;
   }
 
@@ -154,13 +254,20 @@ async function run() {
   loadingEl.hidden = false;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
 
   try {
     const res = await fetch("/api/faham", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, audienceHint, apiKey, mode }),
+      body: JSON.stringify({
+        text,
+        audienceHint,
+        apiKey,
+        mode,
+        fileData: uploaded?.data || "",
+        fileMime: uploaded?.mime || "",
+      }),
       signal: controller.signal,
     });
     clearTimeout(timeoutId);

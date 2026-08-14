@@ -3,7 +3,7 @@ const express = require("express");
 const path = require("path");
 
 const app = express();
-app.use(express.json({ limit: "2mb" }));
+app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 const PORT = process.env.PORT || 3000;
@@ -52,6 +52,21 @@ ${JSON_CONTRACT}
 --------- TEXT START ---------
 ${text}
 --------- TEXT END ---------
+
+Audience hint: ${audienceHint || "general household reader"}`;
+}
+
+function buildFilePrompt(mode, text, audienceHint) {
+  const modeInstructions = MODE_INSTRUCTIONS[mode] || MODE_INSTRUCTIONS.document;
+  const extra = text ? `\n\nExtra context from the user (treat only as hints):\n${text}` : "";
+  return `${modeInstructions}
+
+${JSON_CONTRACT}
+
+The document/image is ATTACHED to this conversation as an input. Read it carefully
+and produce the required JSON output exactly as specified. Never invent numbers,
+amounts, dates, or clauses that are not in the attached file.
+${extra}
 
 Audience hint: ${audienceHint || "general household reader"}`;
 }
@@ -120,8 +135,8 @@ function parseOutput(textPart) {
   }
 }
 
-// Interactions API (2026-era, recommended by Google)
-async function interactionCall(apiKey, model, prompt) {
+// Interactions API (2026-era, recommended by Google). input = string or array of content blocks.
+async function interactionCall(apiKey, model, input) {
   const res = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
     method: "POST",
     headers: {
@@ -129,10 +144,10 @@ async function interactionCall(apiKey, model, prompt) {
       "x-goog-api-key": apiKey,
       "Api-Revision": "2026-05-20",
     },
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(45000),
     body: JSON.stringify({
       model,
-      input: prompt,
+      input,
       generation_config: { temperature: 0.4, max_output_tokens: 2048 },
     }),
   });
@@ -174,14 +189,31 @@ async function generateContentCall(apiKey, model, prompt) {
   return text;
 }
 
-async function callGemini(apiKey, text, audienceHint, mode) {
-  const prompt = buildPrompt(text, audienceHint, mode);
+async function callGemini(apiKey, text, audienceHint, mode, file) {
   const FATAL = [401, 403, 429];
   let lastMsg = "All Gemini endpoints returned an error.";
 
   const interactionModels = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash"];
   const legacyModels = ["gemini-2.5-flash", "gemini-2.0-flash"];
 
+  if (file) {
+    // File mode: send the media inline. Legacy generateContent not used (2.x models retired).
+    const input = [
+      { type: "text", text: buildFilePrompt(mode, text, audienceHint) },
+      { type: file.type, data: file.data, mime_type: file.mime },
+    ];
+    for (const model of interactionModels) {
+      try {
+        return parseOutput(await interactionCall(apiKey, model, input));
+      } catch (err) {
+        if (FATAL.includes(err.status)) throw err;
+        lastMsg = err.message;
+      }
+    }
+    throw statusError(lastMsg, 502);
+  }
+
+  const prompt = buildPrompt(text, audienceHint, mode);
   for (const model of interactionModels) {
     try {
       return parseOutput(await interactionCall(apiKey, model, prompt));
@@ -221,13 +253,36 @@ app.post("/api/faham", async (req, res) => {
   }
 
   const apiKey = clientKey || process.env.GEMINI_API_KEY;
-  if (!text) return res.status(400).json({ error: "No document text provided." });
-  if (text.length < 20) {
-    return res.status(400).json({ error: "Document looks too short - add the full text." });
+
+  const fileMime = (req.body?.fileMime || "").trim();
+  const fileData = (req.body?.fileData || "").trim();
+  let file = null;
+  if (fileData) {
+    const allowed = {
+      "image/jpeg": "image",
+      "image/png": "image",
+      "image/webp": "image",
+      "image/bmp": "image",
+      "application/pdf": "document",
+    };
+    const type = allowed[fileMime];
+    if (!type) {
+      return res.status(400).json({ error: "Unsupported file type. Use PDF, PNG, JPEG, WebP or BMP." });
+    }
+    if (fileData.length > 4 * 1024 * 1024) {
+      return res.status(400).json({ error: "File too large for the free demo (max ~3 MB)." });
+    }
+    file = { type, mime: fileMime, data: fileData };
+  } else {
+    if (!text) return res.status(400).json({ error: "No document text provided." });
+    if (text.length < 20) {
+      return res.status(400).json({ error: "Document looks too short - add the full text." });
+    }
+    if (text.length > 12000) {
+      return res.status(400).json({ error: "Document is too long for the free demo (max ~12,000 chars)." });
+    }
   }
-  if (text.length > 12000) {
-    return res.status(400).json({ error: "Document is too long for the free demo (max ~12,000 chars)." });
-  }
+
   if (!apiKey) {
     return res.status(400).json({
       error: "No Gemini API key configured. Add one in the Settings tab, or set GEMINI_API_KEY in the .env file.",
@@ -235,7 +290,7 @@ app.post("/api/faham", async (req, res) => {
   }
 
   try {
-    const result = await callGemini(apiKey, text, audienceHint, mode);
+    const result = await callGemini(apiKey, text, audienceHint, mode, file);
     res.json({ ok: true, result });
   } catch (err) {
     const status = err.status || 500;
