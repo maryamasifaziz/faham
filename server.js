@@ -211,6 +211,56 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+// TEMP diagnostic - probes which Gemini model+method this key supports. No key leaked.
+app.get("/api/debug/gemini", async (_req, res) => {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return res.status(400).json({ error: "no key" });
+
+  const probe = async (label, fn) => {
+    try {
+      const note = await fn();
+      return { label, ok: true, note };
+    } catch (e) {
+      return { label, ok: false, status: e.status, msg: (e.message || "").slice(0, 220) };
+    }
+  };
+
+  const attempts = [];
+  const intModels = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.4-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
+  for (const model of intModels) {
+    attempts.push(
+      await probe(`interactions:${model}`, async () => {
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": key, "Api-Revision": "2026-05-20" },
+          signal: AbortSignal.timeout(20000),
+          body: JSON.stringify({ model, input: "Reply with the single word: OK", generation_config: { temperature: 0.2, maxOutputTokens: 100 } }),
+        });
+        if (!r.ok) throw statusError((await r.text()).slice(0, 300), r.status);
+        return (extractOutputText(await r.json()) || "(empty)").slice(0, 100);
+      })
+    );
+  }
+  for (const model of ["gemini-2.5-flash", "gemini-2.0-flash"]) {
+    attempts.push(
+      await probe(`generateContent:${model}`, async () => {
+        const r = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(20000),
+            body: JSON.stringify({ contents: [{ parts: [{ text: "Reply with the single word: OK" }] }], generationConfig: { maxOutputTokens: 100 } }),
+          }
+        );
+        if (!r.ok) throw statusError((await r.text()).slice(0, 300), r.status);
+        return (extractOutputText(await r.json()) || "(empty)").slice(0, 100);
+      })
+    );
+  }
+  res.json({ attempts });
+});
+
 app.post("/api/faham", async (req, res) => {
   const text = (req.body?.text || "").trim();
   const audienceHint = (req.body?.audienceHint || "").trim();
