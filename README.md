@@ -1,4 +1,4 @@
-# **Faham — Har English document, aap ki zaban mein · فہم**
+# **Faham — فہم · Har English document, aap ki zaban mein**
 
 **Faham** ("understanding" in Urdu) solves a real, everyday Pakistani problem: the most
 important documents of daily life — electricity bills, bank letters, visa decisions,
@@ -19,7 +19,7 @@ citing the actual figures on it.
 
 > Made for the AI Seekho hackathon · 14 August. Runs on Google Gemini's free tier.
 
-## 🚀 Try it live
+## Try it live
 
 **https://faham-rho.vercel.app** — deployed on Vercel, no install needed.
 
