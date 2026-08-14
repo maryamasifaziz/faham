@@ -608,7 +608,17 @@ textarea#docText:focus {
   gap: 7px;
 }
 .fact-icon { font-size: .95rem; }
-.fvalue { font-size: .95rem; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.fvalue { font-size: 1rem; font-weight: 600; line-height: 1.6; overflow-wrap: anywhere; }
+
+/* Urdu fact values/labels get real Nastaliq at readable size */
+.fvalue[dir="rtl"],
+.flabel-text[dir="rtl"] {
+  font-family: "Noto Nastaliq Urdu", serif;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.fvalue[dir="rtl"] { font-size: 1.3rem; line-height: 2.15; font-weight: 700; }
+.flabel-text[dir="rtl"] { font-size: .95rem; line-height: 2; font-weight: 700; }
 
 .type-amount   { border-left-color: var(--gold-deep); background: linear-gradient(90deg, rgba(246,196,69,.10), #fff 40%); }
 .type-date     { border-left-color: #2f7fbf; background: linear-gradient(90deg, rgba(47,127,191,.09), #fff 40%); }
