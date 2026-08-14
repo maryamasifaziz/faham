@@ -56,78 +56,151 @@ ${text}
 Audience hint: ${audienceHint || "general household reader"}`;
 }
 
+function statusError(message, status) {
+  const e = new Error(message);
+  e.status = status;
+  return e;
+}
+
+async function readBody(res) {
+  let body = "";
+  try {
+    body = await res.text();
+  } catch {}
+  return body;
+}
+
+function describeApiError(prefix, res, body) {
+  let msg = `${prefix}: `;
+  try {
+    const json = JSON.parse(body);
+    msg += json?.error?.message || body.slice(0, 300);
+  } catch {
+    msg += body.slice(0, 300);
+  }
+  return msg;
+}
+
+function extractOutputText(data) {
+  if (typeof data?.output_text === "string" && data.output_text) return data.output_text;
+  if (typeof data?.outputText === "string" && data.outputText) return data.outputText;
+
+  if (Array.isArray(data?.outputs)) {
+    const t = data.outputs.map((o) => (typeof o === "string" ? o : o?.text || "")).join("");
+    if (t) return t;
+  }
+
+  if (Array.isArray(data?.steps)) {
+    const t = data.steps
+      .filter((s) => ["model_output", "output"].includes(s?.type))
+      .map((s) =>
+        Array.isArray(s?.content)
+          ? s.content.filter((c) => !c || c.type === "text").map((c) => c?.text || "").join("")
+          : ""
+      )
+      .join("");
+    if (t) return t;
+  }
+
+  if (Array.isArray(data?.candidates)) {
+    const t = data.candidates
+      .map((c) => c?.content?.parts?.map((p) => p?.text || "").join("") || "")
+      .join("");
+    if (t) return t;
+  }
+
+  return "";
+}
+
+function parseOutput(textPart) {
+  try {
+    return JSON.parse(textPart.replace(/^```json\s*/, "").replace(/```$/, "").trim());
+  } catch (e) {
+    return { raw: textPart };
+  }
+}
+
+// Interactions API (2026-era, recommended by Google)
+async function interactionCall(apiKey, model, prompt) {
+  const res = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+      "Api-Revision": "2026-05-20",
+    },
+    signal: AbortSignal.timeout(30000),
+    body: JSON.stringify({
+      model,
+      input: prompt,
+      generation_config: { temperature: 0.4, maxOutputTokens: 2048 },
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await readBody(res);
+    throw statusError(describeApiError(`Interactions API error ${res.status} (${model})`, res, body), res.status);
+  }
+
+  const text = extractOutputText(await res.json());
+  if (!text) throw statusError(`Empty response from Gemini (${model})`, 502);
+  return text;
+}
+
+// Legacy generateContent fallback (still supported)
+async function generateContentCall(apiKey, model, prompt) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(30000),
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: 2048,
+        responseMimeType: "application/json",
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await readBody(res);
+    throw statusError(describeApiError(`Gemini API error ${res.status} (${model})`, res, body), res.status);
+  }
+
+  const text = extractOutputText(await res.json());
+  if (!text) throw statusError(`Empty response from Gemini (${model})`, 502);
+  return text;
+}
+
 async function callGemini(apiKey, text, audienceHint, mode) {
-  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-pro"];
-  let lastError = null;
+  const prompt = buildPrompt(text, audienceHint, mode);
+  const FATAL = [401, 403, 429];
+  let lastMsg = "All Gemini endpoints returned an error.";
 
-  for (const model of models) {
+  const interactionModels = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash"];
+  const legacyModels = ["gemini-2.5-flash", "gemini-2.0-flash"];
+
+  for (const model of interactionModels) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(8000),
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: buildPrompt(text, audienceHint, mode),
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.4,
-            maxOutputTokens: 2048,
-            responseMimeType: "application/json",
-          },
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const textPart = data?.candidates?.[0]?.content?.parts
-          ?.map((p) => p.text || "")
-          .join("");
-        if (!textPart) throw new Error("Empty response from Gemini");
-
-        try {
-          return JSON.parse(textPart.replace(/^```json\s*/, "").replace(/```$/, "").trim());
-        } catch (e) {
-          return { raw: textPart };
-        }
-      }
-
-      let body = "";
-      try {
-        body = await res.text();
-      } catch {}
-
-      let errMessage = `Gemini API error (${model}): `;
-      try {
-        const json = JSON.parse(body);
-        errMessage += json?.error?.message || body.slice(0, 250);
-      } catch {
-        errMessage += body.slice(0, 250);
-      }
-
-      lastError = new Error(errMessage);
-      lastError.status = [400, 401, 403, 429].includes(res.status) ? res.status : 502;
-
-      // Stop immediately on authentication, permission, or quota errors
-      if ([400, 401, 403, 429].includes(res.status)) {
-        throw lastError;
-      }
+      return parseOutput(await interactionCall(apiKey, model, prompt));
     } catch (err) {
-      if ([400, 401, 403, 429].includes(err.status)) {
-        throw err;
-      }
-      lastError = err;
+      if (FATAL.includes(err.status)) throw err;
+      lastMsg = err.message;
     }
   }
 
-  throw lastError || new Error("Gemini API request failed");
+  for (const model of legacyModels) {
+    try {
+      return parseOutput(await generateContentCall(apiKey, model, prompt));
+    } catch (err) {
+      if (FATAL.includes(err.status)) throw err;
+      lastMsg = err.message;
+    }
+  }
+
+  throw statusError(lastMsg, 502);
 }
 
 app.get("/api/health", (_req, res) => {
