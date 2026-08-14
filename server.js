@@ -14,10 +14,16 @@ const JSON_CONTRACT = `Respond ONLY with valid JSON in this exact shape (no mark
   "urduSummary": "the Urdu output, formatted with line breaks for readability; if not applicable put an empty string",
   "romanUrdu": "the same output in Roman Urdu (Urdu written in English letters); if not applicable put an empty string",
   "keyFacts": [
-    { "label": "short English label like 'Amount Due' / 'Due Date' / 'Action Needed'", "value": "the extracted value in plain Urdu or as-is", "type": "amount|date|deadline|action|contact|other" }
+    {
+      "label": "short English label like 'Amount Due' / 'Due Date' / 'Action Needed'",
+      "urduLabel": "the same label in simple Urdu (e.g. 'واجب رقم' / 'آخری تاریخ')",
+      "value": "the extracted value in plain Urdu (use Urdu digits naturally)",
+      "romanValue": "the same value in Roman Urdu (names, numbers, dates printed as-is are fine)",
+      "type": "amount|date|deadline|action|contact|other"
+    }
   ]
 }
-Every keyFacts item must have all three fields. If a category is absent, omit it. Never invent numbers.`;
+Every keyFacts item must have all five fields. If a category is absent, omit it. Never invent numbers.`;
 
 const MODE_INSTRUCTIONS = {
   document:

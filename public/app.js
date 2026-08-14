@@ -328,12 +328,28 @@ function render(r) {
     const icon = TYPE_ICONS[type] || "📌";
     const div = document.createElement("div");
     div.className = `fact type-${type}`;
+    const urduLabel = f.urduLabel || f.label || "نوٹ";
+    const romanLabel = f.label || f.urduLabel || "Note";
+    const urduValue = f.value || "";
+    const romanValue = f.romanValue || f.value || "";
+    div.dataset.urduLabel = urduLabel;
+    div.dataset.romanLabel = romanLabel;
+    div.dataset.urduValue = urduValue;
+    div.dataset.romanValue = romanValue;
     const label = document.createElement("span");
     label.className = "flabel";
-    label.innerHTML = `<span class="fact-icon">${icon}</span> ${f.label || "Note"}`;
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "fact-icon";
+    iconSpan.textContent = icon;
+    const labelText = document.createElement("span");
+    labelText.className = "flabel-text";
+    labelText.textContent = urduLabel;
+    labelText.dir = "rtl";
+    label.append(iconSpan, labelText);
     const value = document.createElement("span");
     value.className = "fvalue";
-    value.textContent = f.value || "";
+    value.textContent = urduValue;
+    value.dir = "rtl";
     div.append(label, value);
     factsEl.appendChild(div);
   });
@@ -347,6 +363,19 @@ function switchView(view) {
   const roman = $("summaryRoman");
   urdu.style.display = view === "urdu" ? "" : "none";
   roman.style.display = view === "roman" ? "" : "none";
+  const isRoman = view === "roman";
+  document.querySelectorAll(".fact").forEach((el) => {
+    const t = el.querySelector(".flabel-text");
+    const v = el.querySelector(".fvalue");
+    if (t) {
+      t.textContent = isRoman ? el.dataset.romanLabel : el.dataset.urduLabel;
+      t.dir = isRoman ? "ltr" : "rtl";
+    }
+    if (v) {
+      v.textContent = isRoman ? el.dataset.romanValue : el.dataset.urduValue;
+      v.dir = isRoman ? "ltr" : "rtl";
+    }
+  });
   document.querySelectorAll(".toggle").forEach((b) => {
     b.classList.toggle("active", b.dataset.view === view);
   });
