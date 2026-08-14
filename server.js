@@ -59,10 +59,10 @@ Audience hint: ${audienceHint || "general household reader"}`;
 async function callGemini(apiKey, text, audienceHint, mode) {
   const versions = ["v1beta", "v1"];
   const modelsToTry = [
+    "gemini-2.5-flash",
     "gemini-1.5-flash",
     "gemini-1.5-pro",
     "gemini-1.5-flash-8b",
-    "gemini-2.0-flash",
   ];
 
   let lastError = null;
@@ -108,10 +108,19 @@ async function callGemini(apiKey, text, audienceHint, mode) {
           try {
             body = await res.text();
           } catch {}
-          lastError = new Error(`Gemini API error ${res.status} (${version}/${model}): ${body.slice(0, 250)}`);
+          const errMessage = `Gemini API error ${res.status} (${version}/${model}): ${body.slice(0, 250)}`;
+          lastError = new Error(errMessage);
           lastError.status = res.status;
+
+          // Fail fast on API key, permission, or quota errors instead of masking them
+          if ([400, 401, 403, 429].includes(res.status)) {
+            throw lastError;
+          }
         }
       } catch (err) {
+        if ([400, 401, 403, 429].includes(err.status)) {
+          throw err;
+        }
         lastError = err;
       }
     }
