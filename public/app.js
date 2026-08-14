@@ -153,17 +153,27 @@ async function run() {
   btnFaham.disabled = true;
   loadingEl.hidden = false;
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
+
   try {
     const res = await fetch("/api/faham", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text, audienceHint, apiKey, mode }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Something went wrong.");
     render(data.result);
   } catch (err) {
-    showError(err.message);
+    clearTimeout(timeoutId);
+    if (err.name === "AbortError") {
+      showError("Request timed out. Please check your connection or try again.");
+    } else {
+      showError(err.message);
+    }
   } finally {
     btnFaham.disabled = false;
     loadingEl.hidden = true;

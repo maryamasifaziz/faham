@@ -66,6 +66,7 @@ async function callGemini(apiKey, text, audienceHint, mode) {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(8000),
         body: JSON.stringify({
           contents: [
             {
