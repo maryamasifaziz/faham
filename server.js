@@ -206,7 +206,7 @@ async function generateContentCall(apiKey, model, prompt) {
 }
 
 async function callGemini(apiKey, text, audienceHint, mode, file) {
-  const FATAL = [401, 403, 429];
+  const FATAL = [401, 403]; // key invalid → fail fast; 429 (quota) instead falls through to next model
   let lastMsg = "All Gemini endpoints returned an error.";
 
   const interactionModels = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash"];
