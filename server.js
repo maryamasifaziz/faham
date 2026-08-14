@@ -189,7 +189,7 @@ async function generateContentCall(apiKey, model, prompt) {
   return text;
 }
 
-async function callGemini(apiKey, text, audienceHint, mode, file, debug) {
+async function callGemini(apiKey, text, audienceHint, mode, file) {
   const FATAL = [401, 403, 429];
   let lastMsg = "All Gemini endpoints returned an error.";
 
@@ -204,13 +204,7 @@ async function callGemini(apiKey, text, audienceHint, mode, file, debug) {
     ];
     for (const model of interactionModels) {
       try {
-        const raw = await interactionCall(apiKey, model, input);
-        const parsed = parseOutput(raw);
-        if (debug) {
-          parsed.__raw = raw.slice(0, 2500);
-          parsed.__model = model;
-        }
-        return parsed;
+        return parseOutput(await interactionCall(apiKey, model, input));
       } catch (err) {
         if (FATAL.includes(err.status)) throw err;
         lastMsg = err.message;
@@ -222,13 +216,7 @@ async function callGemini(apiKey, text, audienceHint, mode, file, debug) {
   const prompt = buildPrompt(text, audienceHint, mode);
   for (const model of interactionModels) {
     try {
-      const raw = await interactionCall(apiKey, model, prompt);
-      const parsed = parseOutput(raw);
-      if (debug) {
-        parsed.__raw = raw.slice(0, 2500);
-        parsed.__model = model;
-      }
-      return parsed;
+      return parseOutput(await interactionCall(apiKey, model, prompt));
     } catch (err) {
       if (FATAL.includes(err.status)) throw err;
       lastMsg = err.message;
@@ -302,7 +290,7 @@ app.post("/api/faham", async (req, res) => {
   }
 
   try {
-    const result = await callGemini(apiKey, text, audienceHint, mode, file, req.query.debug === "1");
+    const result = await callGemini(apiKey, text, audienceHint, mode, file);
     res.json({ ok: true, result });
   } catch (err) {
     const status = err.status || 500;
