@@ -57,76 +57,70 @@ Audience hint: ${audienceHint || "general household reader"}`;
 }
 
 async function callGemini(apiKey, text, audienceHint, mode) {
+  const versions = ["v1beta", "v1"];
   const modelsToTry = Array.from(
     new Set([
       process.env.GEMINI_MODEL,
-      "gemini-1.5-flash-8b",
-      "gemini-1.5-flash-001",
-      "gemini-1.5-flash-002",
-      "gemini-1.5-flash",
       "gemini-2.5-flash",
-      "gemini-1.5-pro-001",
-      "gemini-1.5-pro-002",
-      "gemini-2.5-pro",
+      "gemini-1.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash-8b",
+      "gemini-1.5-pro",
     ].filter(Boolean))
   );
 
   let lastError = null;
-  for (const model of modelsToTry) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: buildPrompt(text, audienceHint, mode),
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.4,
-            maxOutputTokens: 2048,
-            responseMimeType: "application/json",
-          },
-        }),
-      });
-
-      if (!res.ok) {
-        let body = "";
-        try {
-          body = await res.text();
-        } catch {}
-        if (res.status === 404 && modelsToTry.indexOf(model) < modelsToTry.length - 1) {
-          console.warn(`Model ${model} returned 404, attempting fallback model...`);
-          continue;
-        }
-        const err = new Error(`Gemini API error ${res.status}: ${body.slice(0, 300)}`);
-        err.status = res.status;
-        throw err;
-      }
-
-      const data = await res.json();
-      const textPart = data?.candidates?.[0]?.content?.parts
-        ?.map((p) => p.text || "")
-        .join("");
-      if (!textPart) throw new Error("Empty response from Gemini");
-
+  for (const version of versions) {
+    for (const model of modelsToTry) {
       try {
-        return JSON.parse(textPart.replace(/^```json\s*/, "").replace(/```$/, "").trim());
-      } catch (e) {
-        return { raw: textPart };
+        const url = `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: buildPrompt(text, audienceHint, mode),
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.4,
+              maxOutputTokens: 2048,
+              responseMimeType: "application/json",
+            },
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const textPart = data?.candidates?.[0]?.content?.parts
+            ?.map((p) => p.text || "")
+            .join("");
+          if (!textPart) throw new Error("Empty response from Gemini");
+
+          try {
+            return JSON.parse(textPart.replace(/^```json\s*/, "").replace(/```$/, "").trim());
+          } catch (e) {
+            return { raw: textPart };
+          }
+        } else {
+          let body = "";
+          try {
+            body = await res.text();
+          } catch {}
+          lastError = new Error(`Gemini API error ${res.status} (${version}/${model}): ${body.slice(0, 250)}`);
+          lastError.status = res.status;
+        }
+      } catch (err) {
+        lastError = err;
       }
-    } catch (err) {
-      lastError = err;
-      if (err.status !== 404) throw err;
     }
   }
-  throw lastError || new Error("All Gemini models returned 404");
+  throw lastError || new Error("All Gemini model endpoints returned error");
 }
 
 app.get("/api/health", (_req, res) => {
