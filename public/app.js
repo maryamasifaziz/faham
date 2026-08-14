@@ -8,6 +8,7 @@ const charEl = $("charCount");
 const errorEl = $("errorBox");
 const resultEl = $("resultCard");
 const loadingEl = $("loading");
+const loadingMsgEl = $("loadingMsg");
 
 const SAMPLES = {
   bill:
@@ -51,7 +52,7 @@ const SAMPLES = {
 
 Object.entries(SAMPLES).forEach(([key, text]) => {
   document.querySelector(`[data-sample="${key}"]`)?.addEventListener("click", () => {
-    if (modeEl.value !== "document") modeEl.value = "document";
+    setMode("document");
     docEl.value = text;
     docEl.focus();
     updateCount();
@@ -60,14 +61,36 @@ Object.entries(SAMPLES).forEach(([key, text]) => {
 });
 
 const MODE_PLACEHOLDER = {
-  document: "e.g. 'Dear Customer, your monthly electricity bill is Rs 12,450. Please pay by 25 August 2026...'",
-  translate: "Paste English text to translate into Urdu...",
-  roman: "Paste Roman Urdu... e.g. 'kal tuja se baat karni hai, zara waqt dhoondo'",
-  summarize: "Paste long English or Urdu content to shorten...",
+  document: "Paste your electricity bill, bank loan letter, visa notice, or traffic challan here...",
+  translate: "Paste English text to translate into fluent Nastaliq Urdu (e.g. 'Your passport application has been dispatched...')...",
+  roman: "Paste Roman Urdu message (e.g. 'aaj shaam ko bank manager se meeting hai, documents sath le aana')...",
+  summarize: "Paste a long rental agreement, bank terms, or news article to get 3 bullet points in simple Urdu...",
 };
+
+const MODE_LOADING_MSG = {
+  document: "📄 Reading your document & extracting key facts...",
+  translate: "🌐 Translating into simple Nastaliq Urdu...",
+  roman: "🔤 Converting Roman Urdu to Nastaliq...",
+  summarize: "📝 Summarizing document into key points...",
+};
+
+function setMode(selectedMode) {
+  modeEl.value = selectedMode;
+  document.querySelectorAll(".mode-tab").forEach((t) => {
+    t.classList.toggle("active", t.dataset.mode === selectedMode);
+  });
+  applyMode();
+}
+
+document.querySelectorAll(".mode-tab").forEach((tab) => {
+  tab.addEventListener("click", () => setMode(tab.dataset.mode));
+});
 
 function applyMode() {
   const mode = modeEl.value;
+  document.querySelectorAll(".mode-tab").forEach((t) => {
+    t.classList.toggle("active", t.dataset.mode === mode);
+  });
   const hints = document.querySelectorAll(".samples");
   hints.forEach((h) => (h.style.display = mode === "document" ? "" : "none"));
   if (!docEl.value) docEl.placeholder = MODE_PLACEHOLDER[mode] || "";
@@ -123,6 +146,10 @@ async function run() {
     return;
   }
 
+  if (loadingMsgEl) {
+    loadingMsgEl.textContent = MODE_LOADING_MSG[mode] || "Reading your document...";
+  }
+
   btnFaham.disabled = true;
   loadingEl.hidden = false;
 
@@ -151,6 +178,15 @@ function showError(msg) {
 /* ---------- Render ---------- */
 let lastSummary = "";
 
+const TYPE_ICONS = {
+  amount: "💰",
+  deadline: "⏰",
+  date: "📅",
+  action: "⚡",
+  contact: "📞",
+  other: "📌",
+};
+
 function render(r) {
   resultEl.hidden = false;
   if (r.raw) {
@@ -172,11 +208,12 @@ function render(r) {
   factsBlock.style.display = facts.length ? "" : "none";
   facts.forEach((f) => {
     const type = ["amount", "date", "deadline", "action", "contact", "other"].includes(f.type) ? f.type : "other";
+    const icon = TYPE_ICONS[type] || "📌";
     const div = document.createElement("div");
     div.className = `fact type-${type}`;
     const label = document.createElement("span");
     label.className = "flabel";
-    label.textContent = f.label || "Note";
+    label.innerHTML = `<span class="fact-icon">${icon}</span> ${f.label || "Note"}`;
     const value = document.createElement("span");
     value.className = "fvalue";
     value.textContent = f.value || "";

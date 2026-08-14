@@ -38,12 +38,40 @@
     </section>
 
     <section class="card input-card">
+      <div class="mode-tabs-container">
+        <span class="mode-label">Select Mode</span>
+        <div class="mode-tabs" role="tablist">
+          <button type="button" class="mode-tab active" data-mode="document" role="tab">
+            <span class="tab-icon">📄</span>
+            <span class="tab-text">Explain Document</span>
+          </button>
+          <button type="button" class="mode-tab" data-mode="translate" role="tab">
+            <span class="tab-icon">🌐</span>
+            <span class="tab-text">Translate</span>
+          </button>
+          <button type="button" class="mode-tab" data-mode="roman" role="tab">
+            <span class="tab-icon">🔤</span>
+            <span class="tab-text">Roman → Urdu</span>
+          </button>
+          <button type="button" class="mode-tab" data-mode="summarize" role="tab">
+            <span class="tab-icon">📝</span>
+            <span class="tab-text">Summarize</span>
+          </button>
+        </div>
+        <select id="mode" hidden>
+          <option value="document">Mode: Explain a document (bill / letter / notice)</option>
+          <option value="translate">Mode: Translate English → Urdu</option>
+          <option value="roman">Mode: Roman Urdu → Nastaliq</option>
+          <option value="summarize">Mode: Summarize in simple Urdu</option>
+        </select>
+      </div>
+
       <div class="card-head">
-        <label for="docText">Paste your English document</label>
+        <label for="docText">Paste your text</label>
         <span id="charCount"></span>
       </div>
-      <textarea id="docText" rows="8"
-        placeholder="e.g. 'Dear Customer, your monthly electricity bill is Rs 12,450. Please pay by 25 August 2026 to avoid a late-payment surcharge of Rs 500...'"></textarea>
+      <textarea id="docText" rows="7"
+        placeholder="Paste your electricity bill, bank loan letter, visa notice, or traffic challan here..."></textarea>
 
       <div class="samples">
         <span class="samples-label">Try a sample:</span>
@@ -51,22 +79,19 @@
         <button class="chip" data-sample="loan">Bank loan letter</button>
         <button class="chip" data-sample="visa">Visa decision</button>
         <button class="chip" data-sample="rent">Rent agreement</button>
-        <button class="chip" data-sample="fine">Traffic chalan</button>
+        <button class="chip" data-sample="fine">Traffic challan</button>
       </div>
 
       <div class="row">
-        <select id="mode" title="What do you want to do?">
-          <option value="document">Mode: Explain a document (bill / letter / notice)</option>
-          <option value="translate">Mode: Translate English → Urdu</option>
-          <option value="roman">Mode: Roman Urdu → Nastaliq</option>
-          <option value="summarize">Mode: Summarize in simple Urdu</option>
-        </select>
-        <select id="audience" title="Who is this for?">
-          <option value="general">For: household reader</option>
-          <option value="elderly">For: elderly / low literacy</option>
-          <option value="student">For: student</option>
-          <option value="small-business">For: small business owner</option>
-        </select>
+        <div class="audience-wrapper">
+          <label for="audience" class="select-label">Simplified for:</label>
+          <select id="audience" title="Who is this for?">
+            <option value="general">Household reader</option>
+            <option value="elderly">Elderly / low literacy</option>
+            <option value="student">Student</option>
+            <option value="small-business">Small business owner</option>
+          </select>
+        </div>
         <button id="btnFaham" class="cta">فہم کریں · Explain it to me</button>
       </div>
       <p id="errorBox" class="error" hidden></p>
@@ -114,8 +139,11 @@
   </footer>
 
   <div id="loading" hidden class="loading">
-    <div class="spinner"></div>
-    <p>فہم... Zara sabar karein — making it simple</p>
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <p id="loadingMsg" class="loading-text">Reading your document...</p>
+      <span class="loading-sub">فہم... Zara sabar karein</span>
+    </div>
   </div>
 
   <script src="app.js"></script>
