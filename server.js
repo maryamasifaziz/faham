@@ -133,7 +133,7 @@ async function interactionCall(apiKey, model, prompt) {
     body: JSON.stringify({
       model,
       input: prompt,
-      generation_config: { temperature: 0.4, maxOutputTokens: 2048 },
+      generation_config: { temperature: 0.4, max_output_tokens: 2048 },
     }),
   });
 
@@ -234,7 +234,7 @@ app.get("/api/debug/gemini", async (_req, res) => {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": key, "Api-Revision": "2026-05-20" },
           signal: AbortSignal.timeout(20000),
-          body: JSON.stringify({ model, input: "Reply with the single word: OK", generation_config: { temperature: 0.2, maxOutputTokens: 100 } }),
+          body: JSON.stringify({ model, input: "Reply with the single word: OK", generation_config: { temperature: 0.2, max_output_tokens: 100 } }),
         });
         if (!r.ok) throw statusError((await r.text()).slice(0, 300), r.status);
         return (extractOutputText(await r.json()) || "(empty)").slice(0, 100);
